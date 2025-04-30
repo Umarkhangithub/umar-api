@@ -3,6 +3,7 @@ import cors from 'cors';
 import authRoutes from './routes/authRoutes.js';
 import contactRoutes from './routes/contactRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
+import { generalLimiter } from './middlewares/rateLimitMiddleware.js';
 
 const app = express();
 
@@ -10,6 +11,8 @@ const app = express();
 app.use(cors());
 app.use(express.json()); // Built-in middleware to handle JSON bodies
 app.use(express.urlencoded({ extended: true })); // Built-in middleware to handle URL-encoded data
+app.use(generalLimiter); // Apply rate limiting to all requests
+
 
 // Routes
 app.use("/api/admin", authRoutes);
