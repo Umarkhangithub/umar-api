@@ -11,10 +11,10 @@ import protect from '../middlewares/authMiddleware.js'; // if auth is enabled
 import { validateProject } from '../middlewares/validateProjectMiddleware.js';
 const router = express.Router();
 
-router.post('/', protect,  upload.single('image'), validateProject, createProject);
+router.post('/',   upload.single('image'), validateProject, createProject);
 router.get('/', getAllProjects);
-router.get('/:id', getProjectById);
-router.put('/:id', protect,  upload.single('image'), updateProject);
-router.delete('/:id', protect, deleteProject);
+router.get('/:id/view', getProjectById);
+router.put('/:id/edit',   upload.single('image'), updateProject);
+router.delete('/:id',  deleteProject);
 
 export default router;

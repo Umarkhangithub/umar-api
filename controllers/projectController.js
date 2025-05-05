@@ -1,11 +1,11 @@
-import Project from '../models/projectModels.js';
+import Project from '../models/projectModel.js';
 import cloudinary from '../utils/cloudinary.js';
 import { deleteImage } from '../utils/deleteImage.js';
 
 // Create Project
 export const createProject = async (req, res) => {
   try {
-    const { title, description, techStack, liveUrl, githubUrl } = req.body;
+    const { title, description, techStack, liveDemo, githubLink } = req.body;
 
     let imageUrl = null;
 
@@ -13,7 +13,7 @@ export const createProject = async (req, res) => {
       const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
       const result = await cloudinary.uploader.upload(base64Image, {
         folder: 'Images',
-        resource_type: 'auto',
+        resource_type: 'image',
         transformation: [
           { width: 800, height: 600, crop: 'limit' },
           { quality: 'auto' },
@@ -27,8 +27,8 @@ export const createProject = async (req, res) => {
       title,
       description,
       techStack,
-      liveUrl,
-      githubUrl,
+      liveDemo,
+      githubLink,
       image: imageUrl,
     });
 
@@ -40,90 +40,93 @@ export const createProject = async (req, res) => {
   }
 };
 
-// Get All Projects
+// Get All Projects (with pagination)
 export const getAllProjects = async (req, res) => {
   try {
-    // Get the page number and limit from the query params (with defaults if not provided)
-    const page = parseInt(req.query.page) || 1;  // Default to page 1 if not provided
-    const limit = parseInt(req.query.limit) || 10;  // Default to 10 projects per page if not provided
-
-    // Calculate the skip value
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 6;
     const skip = (page - 1) * limit;
 
-    // Fetch the projects with pagination
-    const projects = await Project.find()
-      .skip(skip)   // Skip the number of projects based on the page
-      .limit(limit); // Limit the number of projects per page
+    const [projects, totalProjects] = await Promise.all([
+      Project.find().skip(skip).limit(limit),
+      Project.countDocuments(),
+    ]);
 
-    // Count the total number of projects
-    const totalProjects = await Project.countDocuments();
-
-    // Calculate the total number of pages
-    const totalPages = Math.ceil(totalProjects / limit);
-
-    // Check if the requested page is greater than the available pages
-    if (page > totalPages) {
-      return res.status(400).json({
-        message: `Page ${page} exceeds the total available pages. There are only ${totalPages} pages available.`,
-      });
-    }
-
-    // Return the paginated response
     res.status(200).json({
       projects,
       totalProjects,
-      totalPages,
+      totalPages: Math.ceil(totalProjects / limit),
       currentPage: page,
       projectsPerPage: limit,
     });
   } catch (err) {
-    console.error("Error fetching projects:", err);
     res.status(500).json({ message: 'Failed to fetch projects', error: err.message });
   }
 };
 
-
 // Get Single Project
 export const getProjectById = async (req, res) => {
   try {
-    const project = await Project.findById(req.params.id);
-    if (!project) return res.status(404).json({ message: 'Project not found' });
-    res.status(200).json(project);
+    const { id } = req.params;
+
+    // Validate ObjectId format
+    if (!id || id.length !== 24) {
+      return res.status(400).json({ message: "Invalid project ID" });
+    }
+
+    const project = await Project.findById(id);
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    res.status(200).json({ message: "Project fetched successfully", project });
   } catch (err) {
-    res.status(500).json({ message: 'Failed to fetch project', error: err.message });
+    res.status(500).json({
+      message: "Failed to fetch project",
+      error: err.message,
+    });
   }
 };
+
 
 // Update Project
 export const updateProject = async (req, res) => {
   try {
     const updates = req.body;
     const project = await Project.findById(req.params.id);
-    if (!project) return res.status(404).json({ message: 'Project not found' });
 
-    // Handle new image upload and delete old image
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
     if (req.file) {
-      // Delete old image
       if (project.image) {
-        const publicId = project.image.split('/').pop().split('.')[0];
+        const segments = project.image.split('/');
+        const filename = segments[segments.length - 1];
+        const publicId = `Images/${filename.split('.')[0]}`;
         await deleteImage(publicId);
       }
-      // Upload new image
+
       const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
       const result = await cloudinary.uploader.upload(base64Image, {
-        folder: "Images",
+        folder: 'Images',
+        resource_type: 'image',
         transformation: [
-          { width: 800, height: 600, crop: "limit" },
-          { quality: "auto" },
+          { width: 800, height: 600, crop: 'limit' },
+          { quality: 'auto' },
         ],
       });
 
       updates.image = result.secure_url;
     }
 
-    const updated = await Project.findByIdAndUpdate(req.params.id, updates, { new: true });
-    res.status(200).json({ message: 'Project updated', project: updated });
+    const updatedProject = await Project.findByIdAndUpdate(req.params.id, updates, {
+      new: true,
+      runValidators: true,
+    });
 
+    res.status(200).json({ message: 'Project updated successfully', project: updatedProject });
   } catch (err) {
     res.status(500).json({ message: 'Failed to update project', error: err.message });
   }
@@ -133,17 +136,21 @@ export const updateProject = async (req, res) => {
 export const deleteProject = async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
-    if (!project) return res.status(404).json({ message: 'Project not found' });
 
-    // Delete image from Cloudinary
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
     if (project.image) {
-      const publicId = project.image.split('/').pop().split('.')[0];
+      const segments = project.image.split('/');
+      const filename = segments[segments.length - 1];
+      const publicId = `Images/${filename.split('.')[0]}`;
       await deleteImage(publicId);
     }
 
     await Project.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: 'Project deleted' });
 
+    res.status(200).json({ message: 'Project deleted successfully' });
   } catch (err) {
     res.status(500).json({ message: 'Failed to delete project', error: err.message });
   }
