@@ -10,11 +10,9 @@ import skillsRoutes from './routes/skillsRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
 
 import { generalLimiter } from './middlewares/rateLimitMiddleware.js';
-import connectDB from './config/db.js';
 
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // ==================
 // Global Middlewares

@@ -109,7 +109,6 @@ export const getContactById = async (req, res) => {
 // Delete Contact Message
 export const deleteContactMessage = async (req, res) => {
   const { id } = req.params;
-  console.log("ID from request params:", id);  // This should log the contact ID passed in the URL
 
   try {
     const contact = await Contact.findByIdAndDelete(id);

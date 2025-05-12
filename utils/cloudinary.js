@@ -1,5 +1,5 @@
-import { v2 as cloudinary } from 'cloudinary';
-import streamifier from 'streamifier'; // Ensure this is installed: npm i streamifier
+import { v2 as cloudinary } from "cloudinary";
+import streamifier from "streamifier"; // Ensure this is installed: npm i streamifier
 
 // Cloudinary config
 cloudinary.config({
@@ -9,7 +9,11 @@ cloudinary.config({
 });
 
 // Upload to Cloudinary with correct resource type
-export const uploadToCloudinary = (fileBuffer, folder, resourceType = "auto") => {
+export const uploadToCloudinary = (
+  fileBuffer,
+  folder,
+  resourceType = "auto"
+) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {

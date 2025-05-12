@@ -8,3 +8,4 @@ router.post('/register', registerAdmin);
 router.post('/login',loginLimiter, loginAdmin);
 
 export default router;
+
